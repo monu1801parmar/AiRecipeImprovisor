@@ -1,9 +1,8 @@
-
-import React, { useState } from "react";
-import "./App.css";
+import React, { useState, useEffect } from "react";
+import './App.css'
 
 function App() {
-  
+
   const [ingredients, setIngredients] = useState("");
   const [cuisine, setCuisine] = useState("Any");
   const [difficulty, setDifficulty] = useState("Any");
@@ -11,13 +10,32 @@ function App() {
   const [recipe, setRecipe] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  
+  const [openRouterApiKey, setOpenRouterApiKey] = useState(() => {
 
+    const savedApiKey = localStorage.getItem("openRouterApiKey");
+    return savedApiKey || ""; 
+  });
+
+
+  useEffect(() => {
+    localStorage.setItem("openRouterApiKey", openRouterApiKey);
+  }, [openRouterApiKey]);
+
+  
   async function generateRecipe() {
+  
+    if (!openRouterApiKey.trim()) {
+      setError("Please enter your OpenRouter API Key.");
+      return;
+    }
+
+  
     setLoading(true);
     setError(null);
     setRecipe("");
 
-    
+
     let prompt = `Create a detailed recipe using these ingredients: ${ingredients}.`;
 
     if (cuisine !== "Any") {
@@ -40,16 +58,13 @@ function App() {
     7. Instructions (step-by-step)
     8. Estimated Nutritional Information per serving (Calories, Protein, Carbs, Fat - provide approximate values).`;
 
- 
-    const apiKey = typeof __openrouter_api_key !== 'undefined' ? __openrouter_api_key : import.meta.env.VITE_OPENROUTER_API_KEY;
-
     try {
-   
+    
       const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${apiKey}`,
+          "Authorization": `Bearer ${openRouterApiKey}`, // Use the key from state
         },
         body: JSON.stringify({
           model: "gpt-4o-mini", 
@@ -62,13 +77,18 @@ function App() {
         }),
       });
 
-
+    
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to fetch recipe from AI. Please try again.");
+        let errorMessage = "Failed to fetch recipe from AI. Please try again.";
+        if (errorData.message) {
+            errorMessage = errorData.message;
+        } else if (response.status === 401) {
+            errorMessage = "Invalid API Key. Please check your OpenRouter API Key.";
+        }
+        throw new Error(errorMessage);
       }
 
-  
       const data = await response.json();
       const generatedRecipe = data.choices[0].message.content;
       setRecipe(generatedRecipe); 
@@ -81,7 +101,8 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4 font-sans">
-      <div className="max-w-3xl w-full mx-auto p-5 bg-gray-50 rounded-xl shadow-lg flex flex-col">
+
+      <div className="max-w-3xl w-full mx-auto p-5 bg-gray-50 rounded-xl shadow-lg flex flex-col box-border overflow-x-hidden">
         <h1 className="text-3xl font-bold text-center mb-5 text-gray-700">
           🍳 AI Recipe Improviser
         </h1>
@@ -97,7 +118,7 @@ function App() {
             value={ingredients}
             onChange={(e) => setIngredients(e.target.value)}
             rows={5}
-            className="w-full p-3 border border-gray-300 rounded-lg resize-y min-h-[100px] text-base focus:outline-none focus:ring-2 focus:ring-green-500"
+            className="w-full p-3 border border-gray-300 rounded-lg resize-y min-h-[100px] text-base focus:outline-none focus:ring-2 focus:ring-green-500 box-border max-w-full" /* Added max-w-full */
           />
         </div>
 
@@ -112,7 +133,7 @@ function App() {
               id="cuisine"
               value={cuisine}
               onChange={(e) => setCuisine(e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="w-full p-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-green-500 box-border max-w-full" /* Added max-w-full */
             >
               <option value="Any">Any</option>
               <option value="Italian">Italian</option>
@@ -136,7 +157,7 @@ function App() {
               id="difficulty"
               value={difficulty}
               onChange={(e) => setDifficulty(e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="w-full p-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-green-500 box-border max-w-full" /* Added max-w-full */
             >
               <option value="Any">Any</option>
               <option value="Easy">Easy</option>
@@ -154,7 +175,7 @@ function App() {
               id="mealType"
               value={mealType}
               onChange={(e) => setMealType(e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="w-full p-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-green-500 box-border max-w-full" /* Added max-w-full */
             >
               <option value="Any">Any</option>
               <option value="Breakfast">Breakfast</option>
@@ -166,10 +187,28 @@ function App() {
           </div>
         </div>
 
+        {/* OpenRouter API Key Input */}
+        <div className="mb-5">
+          <label htmlFor="apiKey" className="block text-gray-700 text-lg font-semibold mb-2">
+            OpenRouter.ai API Key:
+          </label>
+          <input
+            id="apiKey"
+            type="password" // Use type="password" for sensitive input
+            placeholder="Paste your OpenRouter.ai API Key here"
+            value={openRouterApiKey}
+            onChange={(e) => setOpenRouterApiKey(e.target.value)}
+            className="w-full p-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-green-500 box-border max-w-full" /* Added max-w-full */
+          />
+          <p className="text-sm text-gray-500 mt-1">
+            Get your key from <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer" className="text-green-600 hover:underline">openrouter.ai/keys</a>. It will be saved in your browser.
+          </p>
+        </div>
+
         {/* Generate Button */}
         <button
           onClick={generateRecipe}
-          disabled={loading || !ingredients.trim()}
+          disabled={loading || !ingredients.trim() || !openRouterApiKey.trim()}
           className="w-full py-3 px-0 border-none rounded-lg text-lg font-bold text-white bg-green-600 cursor-pointer transition-colors duration-300 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
           {loading ? (
@@ -209,5 +248,3 @@ function App() {
 }
 
 export default App;
-
-  

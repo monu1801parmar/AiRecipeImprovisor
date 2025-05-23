@@ -4,6 +4,7 @@ body {
   font-family: 'Inter', sans-serif; 
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  
 }
 
 .min-h-screen {
@@ -110,7 +111,7 @@ body {
 
 /* Textarea and Select Styling */
 .w-full {
-  width: 100%;
+  width: 90%;
 }
 
 .p-3 {
